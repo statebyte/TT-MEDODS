@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -23,22 +24,25 @@ func RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, err := jwtGen.VerifyToken(req.AccessToken, true)
+	payload, err := jwtGen.VerifyToken(req.RefreshToken, true)
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Invalid access token", http.StatusUnauthorized)
+		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
 		return
 	}
 
-	userSession, err := DB.GetUserSession(payload.UserID, payload.UserID)
+	_, err = DB.GetUserSession(payload.UserID, payload.TokenUUID)
+
 	if err != nil {
 		log.Println(err)
-		http.Error(w, "Failed to get user session", http.StatusUnauthorized)
+		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
 		return
 	}
+
+	ip := strings.Split(r.RemoteAddr, ":")[0]
 
 	go func() {
-		if userSession.IPAddress != r.RemoteAddr {
+		if payload.IPAddress != ip {
 			user, err := DB.GetUser(payload.UserID)
 			if err != nil {
 				log.Println("Failed to get user data...")
@@ -48,7 +52,21 @@ func RefreshTokens(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	// TODO: Добавить логику обновления токена в бд
+	tokens, err := jwtGen.CreateTokenPair(payload.UserID, ip)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
+		return
+	}
+
+	err = DB.UpdateSession(payload.TokenUUID, tokens.TokenUUID, tokens.Pair.RefreshToken, ip)
+	if err != nil {
+		log.Println(err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	Response(w, tokens.Pair)
 }
 
 func IssueTokens(w http.ResponseWriter, r *http.Request) {
@@ -61,16 +79,16 @@ func IssueTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := r.RemoteAddr
+	ip := strings.Split(r.RemoteAddr, ":")[0]
 
-	tokenPair, err := jwtGen.CreateTokenPair(userID, ip)
+	tokens, err := jwtGen.CreateTokenPair(userID, ip)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "Failed to generate tokens", http.StatusInternalServerError)
 		return
 	}
 
-	err = DB.SaveSession(string(tokenPair.RefreshToken), userID, userID, ip)
+	err = DB.SaveSession(tokens.Pair.RefreshToken, tokens.TokenUUID, userID, ip)
 
 	if err != nil {
 		log.Println(err)
@@ -78,7 +96,11 @@ func IssueTokens(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	jsonData, err := json.Marshal(tokenPair)
+	Response(w, tokens.Pair)
+}
+
+func Response(w http.ResponseWriter, data any) {
+	jsonData, err := json.Marshal(data)
 	if err != nil {
 		log.Println(err)
 		http.Error(w, "JSON Marshal failed", http.StatusInternalServerError)
@@ -86,5 +108,6 @@ func IssueTokens(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
 }

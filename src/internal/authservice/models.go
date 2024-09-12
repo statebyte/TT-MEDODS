@@ -49,24 +49,25 @@ func (db *AuthDB) SaveSession(tokenHash string, accessTokenID uuid.UUID, userID 
 		userID,
 		accessTokenID,
 		time.Now(),
-		time.Now().Add(7*24*time.Hour),
+		time.Now().Add(jwtGen.RefreshExpires),
 		ip,
 	)
 	return err
 }
 
-func (db *AuthDB) UpdateSession(accessTokenID uuid.UUID, newTokenHash string, ip string) error {
+func (db *AuthDB) UpdateSession(oldTokenID uuid.UUID, newTokenID uuid.UUID, newTokenHash string, ip string) error {
 	query := `
 		UPDATE user_sessions
-		SET token_hash = $1, issued_at = $2, expires_at = $3, ip_address = $4
-		WHERE access_token_id = $5`
+		SET token_hash = $1, issued_at = $2, expires_at = $3, ip_address = $4, access_token_id = $5
+		WHERE access_token_id = $6`
 
 	_, err := db.DBInstance.Conn.Exec(query,
 		newTokenHash,
 		time.Now(),
-		time.Now().Add(7*24*time.Hour),
+		time.Now().Add(jwtGen.RefreshExpires),
 		ip,
-		accessTokenID,
+		newTokenID,
+		oldTokenID,
 	)
 	return err
 }

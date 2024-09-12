@@ -20,9 +20,15 @@ type TokenPair struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type JWTResult struct {
+	TokenUUID uuid.UUID
+	Pair      TokenPair
+}
+
 type Payload struct {
 	UserID    uuid.UUID `json:"user_id"`
 	IPAddress string    `json:"ip_address"`
+	TokenUUID uuid.UUID
 	jwt.RegisteredClaims
 }
 
@@ -33,7 +39,7 @@ func (j *JWTGenerator) Init(secret string) {
 	j.RefreshExpires = 7 * 24 * time.Hour
 }
 
-func (j *JWTGenerator) generateToken(userID uuid.UUID, ipAddress string, expires time.Time, isAccessToken bool) (string, error) {
+func (j *JWTGenerator) generateToken(userID uuid.UUID, ipAddress string, expires time.Time, tokenUUID uuid.UUID, isAccessToken bool) (string, error) {
 	var secret string
 	if isAccessToken {
 		secret = j.AccessSecret
@@ -44,11 +50,13 @@ func (j *JWTGenerator) generateToken(userID uuid.UUID, ipAddress string, expires
 	claims := Payload{
 		UserID:    userID,
 		IPAddress: ipAddress,
+		TokenUUID: tokenUUID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expires),
 		},
 	}
 
+	// HMAC - SHA512
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
@@ -58,20 +66,22 @@ func (j *JWTGenerator) generateToken(userID uuid.UUID, ipAddress string, expires
 	return tokenString, nil
 }
 
-func (j *JWTGenerator) CreateTokenPair(userID uuid.UUID, ipAddress string) (*TokenPair, error) {
-	tokenDetails := &TokenPair{}
+func (j *JWTGenerator) CreateTokenPair(userID uuid.UUID, ipAddress string) (*JWTResult, error) {
+	tokenDetails := &JWTResult{}
 
-	accessToken, err := j.generateToken(userID, ipAddress, time.Now().Add(j.AccessExpires), true)
+	tokenDetails.TokenUUID = uuid.New()
+
+	accessToken, err := j.generateToken(userID, ipAddress, time.Now().Add(j.AccessExpires), tokenDetails.TokenUUID, true)
 	if err != nil {
 		return nil, err
 	}
-	tokenDetails.AccessToken = accessToken
+	tokenDetails.Pair.AccessToken = accessToken
 
-	refreshToken, err := j.generateToken(userID, ipAddress, time.Now().Add(j.RefreshExpires), false)
+	refreshToken, err := j.generateToken(userID, ipAddress, time.Now().Add(j.RefreshExpires), tokenDetails.TokenUUID, false)
 	if err != nil {
 		return nil, err
 	}
-	tokenDetails.RefreshToken = refreshToken
+	tokenDetails.Pair.RefreshToken = refreshToken
 
 	return tokenDetails, nil
 }
@@ -95,8 +105,8 @@ func (j *JWTGenerator) VerifyToken(tokenString string, isAccessToken bool) (*Pay
 		return nil, err
 	}
 
-	if claims, ok := token.Claims.(*Payload); ok && token.Valid {
-		return claims, nil
+	if payload, ok := token.Claims.(*Payload); ok && token.Valid {
+		return payload, nil
 	}
 
 	return nil, fmt.Errorf("invalid token")
