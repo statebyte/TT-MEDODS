@@ -1,0 +1,62 @@
+{
+	"info": {
+		"_postman_id": "7b7fa115-2089-4835-b50c-4476cf8a0f1f",
+		"name": "MEDODS",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "24067640",
+		"_collection_link": "https://lunar-comet-947268.postman.co/workspace/5PRODUCTION.NET~81d98c46-9f7a-4aa3-8759-41e0b153bead/collection/24067640-7b7fa115-2089-4835-b50c-4476cf8a0f1f?action=share&source=collection_link&creator=24067640"
+	},
+	"item": [
+		{
+			"name": "IssueTokens",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8080/auth/token/5f32a8a2-45f4-4c0c-9f7e-61e8b8d4edc9",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"auth",
+						"token",
+						"5f32a8a2-45f4-4c0c-9f7e-61e8b8d4edc9"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "RefreshTokens",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"access_token\": \"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNWYzMmE4YTItNDVmNC00YzBjLTlmN2UtNjFlOGI4ZDRlZGM5IiwiaXBfYWRkcmVzcyI6IjE3Mi4xOC4wLjE6NTkyMDYiLCJleHAiOjE3MjYwOTk4NjZ9.yWkNBPdJfF5qEm03AsTvIeSjQnjdNHc-yWJiIKEcTN8E2PS24eOZRHdwsBGajLu5gPvPzmvzcZ9qDkG3WmdtSw\",\r\n    \"refresh_token\": \"eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNWYzMmE4YTItNDVmNC00YzBjLTlmN2UtNjFlOGI4ZDRlZGM5IiwiaXBfYWRkcmVzcyI6IjE3Mi4xOC4wLjE6NTkyMDYiLCJleHAiOjE3MjY3MDM3NjZ9.7zKLCDYT8dJtqdOSsWTJvtBElYDpAvxoSB6nCx0u8QnwMIOvNk4sTAdIc0TLzF1MvERnTwnbqOr1vCO6xSHcvA\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/auth/token/refresh",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"auth",
+						"token",
+						"refresh"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
